@@ -50,5 +50,26 @@ namespace Passwordium_api.Services
 
             return response;
         }
+
+        public async Task RegisterAsync(UserRequest request)
+        {
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+            if (existingUser != null)
+            {
+                throw new InvalidDataException("A user with this username already exists.");
+            }
+
+            User newUser = new User
+            {
+                Username = request.Username,
+                Password = request.Password
+            };
+
+            HashService hashService = new HashService();
+            newUser = hashService.HashPassword(newUser);
+
+            _context.Users.Add(newUser);
+            await _context.SaveChangesAsync();
+        }
     }
 }

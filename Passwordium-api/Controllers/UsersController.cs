@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using NuGet.Protocol.Plugins;
 using Passwordium_api.Data;
 using Passwordium_api.Model.Entities;
@@ -46,6 +47,31 @@ namespace Passwordium_api.Controllers
             catch (InvalidDataException ex)
             {
                 return Unauthorized(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
+        // POST: api/Users/Register
+        [HttpPost("Register")]
+        public async Task<ActionResult<User>> Register(UserRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                await _userService.RegisterAsync(request);
+
+                return Ok(new { message = "User added to database!" });
+            }
+            catch (InvalidDataException ex)
+            {
+                return Conflict(new { message = ex.Message });
             }
             catch (Exception ex)
             {
