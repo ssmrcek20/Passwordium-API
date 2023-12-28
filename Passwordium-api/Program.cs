@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Passwordium_api.Data;
+using Passwordium_api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,8 +11,13 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
     ));
 #endregion
 
-builder.Services.AddControllers();
+#region Services
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<HashService>();
+builder.Services.AddScoped<TokenService>();
+#endregion
 
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
