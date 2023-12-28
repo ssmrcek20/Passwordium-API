@@ -1,20 +1,29 @@
+using Microsoft.EntityFrameworkCore;
+using Passwordium_api.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+#region Database
+builder.Services.AddDbContext<DatabaseContext>(options => 
+    options.UseNpgsql(builder.Configuration["DatabaseConnectionString"] 
+        ?? throw new InvalidOperationException("Connection string 'DatabaseContext' not found.")
+    ));
+#endregion
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+#region Development toggles for app
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+#endregion
 
 app.UseHttpsRedirection();
 
