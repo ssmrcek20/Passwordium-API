@@ -78,5 +78,29 @@ namespace Passwordium_api.Controllers
                 return NotFound(new { message = ex.Message });
             }
         }
+
+        // POST: api/Users/TokenRefresh
+        [Authorize(AuthenticationSchemes = "NoExpiryCheck")]
+        [HttpPost("TokenRefresh")]
+        public async Task<ActionResult<User>> TokenRefresh(TokenRefreshRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+                LoginResponse response = await _userService.TokenRefreshAsync(request, jwt);
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+
+        }
     }
 }
