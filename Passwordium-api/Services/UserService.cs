@@ -24,12 +24,7 @@ namespace Passwordium_api.Services
 
         public async Task<LoginResponse> LoginAsync(UserRequest request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
-            if (user == null)
-            {
-                throw new Exception("User not found.");
-            }
-
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username) ?? throw new Exception("User not found.");
             HashService hashService = new HashService();
             var passwordVerification = hashService.VerifyHashedPassword(user, request.Password);
             if (passwordVerification == PasswordVerificationResult.Failed)
@@ -78,7 +73,7 @@ namespace Passwordium_api.Services
             var token = handler.ReadJwtToken(jwtToken);
             var userId = token.Claims.First(claim => claim.Type == "id").Value;
 
-            var user = _context.Users.FirstOrDefault(u => u.Id == int.Parse(userId));
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == int.Parse(userId));
 
             if (request.RefreshToken != user.RefreshToken || user.ExpiresAt < DateTime.UtcNow)
             {

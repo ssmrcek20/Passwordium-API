@@ -20,12 +20,10 @@ namespace Passwordium_api.Controllers
     [ApiController]
     public class UsersController : ControllerBase
     {
-        private readonly DatabaseContext _context;
         private readonly UserService _userService;
 
-        public UsersController(DatabaseContext context, UserService userService)
+        public UsersController(UserService userService)
         {
-            _context = context;
             _userService = userService;
         }
 
