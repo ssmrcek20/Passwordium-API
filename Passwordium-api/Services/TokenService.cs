@@ -24,10 +24,7 @@ namespace Passwordium_api.Services
                     new Claim(ClaimTypes.Name,user.Username)
                 }),
                 Expires = DateTime.UtcNow.AddMinutes(2),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),
-                               SecurityAlgorithms.HmacSha256Signature),
-                Audience = config.GetSection("JWT:Audience").Value,
-                Issuer = config.GetSection("JWT:Issuer").Value
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);

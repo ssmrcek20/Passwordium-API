@@ -71,5 +71,32 @@ namespace Passwordium_api.Services
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<LoginResponse> TokenRefreshAsync(TokenRefreshRequest request, string jwtToken)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(jwtToken);
+            var userId = token.Claims.First(claim => claim.Type == "id").Value;
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == int.Parse(userId));
+
+            if (request.RefreshToken != user.RefreshToken || user.ExpiresAt < DateTime.UtcNow)
+            {
+                throw new Exception("Invalid refresh token.");
+            }
+
+            TokenService tokenService = new TokenService();
+            string newJWT = tokenService.GenerateJwtToken(user, _config);
+            user = tokenService.GenerateRefreshToken(user, _context);
+
+            LoginResponse loginResponse = new LoginResponse
+            {
+                JWT = newJWT,
+                RefreshToken = user.RefreshToken,
+                RefreshTokenExpiresAt = (DateTime)user.ExpiresAt
+            };
+
+            return loginResponse;
+        }
     }
 }
