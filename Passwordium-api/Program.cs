@@ -25,7 +25,6 @@ builder.Services.AddScoped<TokenService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
 #region Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
