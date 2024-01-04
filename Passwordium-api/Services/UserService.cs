@@ -14,27 +14,27 @@ namespace Passwordium_api.Services
     public class UserService
     {
         private readonly DatabaseContext _context;
-        private readonly IConfiguration _config;
+        private readonly TokenService _tokenService;
+        private readonly HashService _hashService;
 
-        public UserService(DatabaseContext context, IConfiguration configuration)
+        public UserService(DatabaseContext context, TokenService tokenService, HashService hashService)
         {
             _context = context;
-            _config = configuration;
+            _tokenService = tokenService;
+            _hashService = hashService;
         }
 
         public async Task<LoginResponse> LoginAsync(UserRequest request)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username) ?? throw new Exception("User not found.");
-            HashService hashService = new HashService();
-            var passwordVerification = hashService.VerifyHashedPassword(user, request.Password);
+            var passwordVerification = _hashService.VerifyHashedPassword(user, request.Password);
             if (passwordVerification == PasswordVerificationResult.Failed)
             {
                 throw new InvalidDataException("Incorrect password.");
             }
 
-            TokenService tokenService = new TokenService();
-            string jwt = tokenService.GenerateJwtToken(user, _config);
-            user = tokenService.GenerateRefreshToken(user, _context);
+            string jwt = _tokenService.GenerateJwtToken(user);
+            user = _tokenService.GenerateRefreshToken(user, _context);
 
             LoginResponse response = new LoginResponse
             {
@@ -60,8 +60,7 @@ namespace Passwordium_api.Services
                 Password = request.Password
             };
 
-            HashService hashService = new HashService();
-            newUser = hashService.HashPassword(newUser);
+            newUser = _hashService.HashPassword(newUser);
 
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
@@ -80,9 +79,8 @@ namespace Passwordium_api.Services
                 throw new Exception("Invalid refresh token.");
             }
 
-            TokenService tokenService = new TokenService();
-            string newJWT = tokenService.GenerateJwtToken(user, _config);
-            user = tokenService.GenerateRefreshToken(user, _context);
+            string newJWT = _tokenService.GenerateJwtToken(user);
+            user = _tokenService.GenerateRefreshToken(user, _context);
 
             LoginResponse loginResponse = new LoginResponse
             {

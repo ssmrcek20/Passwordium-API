@@ -20,12 +20,10 @@ namespace Passwordium_api.Controllers
     public class AccountsController : ControllerBase
     {
         private readonly DatabaseContext _context;
-        private readonly IConfiguration _config;
 
-        public AccountsController(DatabaseContext context, IConfiguration config)
+        public AccountsController(DatabaseContext context)
         {
             _context = context;
-            _config=config;
         }
 
         // GET: api/Accounts

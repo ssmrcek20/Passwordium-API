@@ -11,10 +11,17 @@ namespace Passwordium_api.Services
 {
     public class TokenService
     {
-        public string GenerateJwtToken(User user, IConfiguration config)
+        private readonly AppConfiguration _appConfiguration;
+
+        public TokenService(AppConfiguration appConfiguration)
+        {
+            _appConfiguration = appConfiguration;
+        }
+
+        public string GenerateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(config.GetSection("JWT:Key").Value);
+            var key = Encoding.ASCII.GetBytes(_appConfiguration.JwtKey);
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
