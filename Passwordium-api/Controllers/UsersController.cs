@@ -23,11 +23,13 @@ namespace Passwordium_api.Controllers
     {
         private readonly UserService _userService;
         private readonly DatabaseContext _context;
+        private readonly TokenService _tokenService;
 
-        public UsersController(UserService userService, DatabaseContext context)
+        public UsersController(UserService userService, DatabaseContext context, TokenService tokenService)
         {
             _userService = userService;
             _context=context;
+            _tokenService = tokenService;
         }
 
         // POST: api/Users/Login
@@ -95,11 +97,9 @@ namespace Passwordium_api.Controllers
         public async Task<IActionResult> PublicKey(PublicKeyRequest request)
         {
             string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-            var handler = new JwtSecurityTokenHandler();
-            var token = handler.ReadJwtToken(jwt);
-            var userId = token.Claims.First(claim => claim.Type == "id").Value;
+            int userId = _tokenService.GetUserIdFromJWT(jwt);
 
-            var userReal = await _context.Users.FirstOrDefaultAsync(a => a.Id == int.Parse(userId));
+            var userReal = await _context.Users.FirstOrDefaultAsync(a => a.Id == userId);
             if (userReal == null)
             {
                 return NotFound(new { message = "User does not exists." });

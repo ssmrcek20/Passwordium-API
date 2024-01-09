@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 using Passwordium_api.Data;
 using Passwordium_api.Model.Entities;
 using Passwordium_api.Model.Requests;
+using Passwordium_api.Services;
 
 namespace Passwordium_api.Controllers
 {
@@ -20,10 +21,12 @@ namespace Passwordium_api.Controllers
     public class AccountsController : ControllerBase
     {
         private readonly DatabaseContext _context;
+        private readonly TokenService _tokenService;
 
-        public AccountsController(DatabaseContext context)
+        public AccountsController(DatabaseContext context, TokenService tokenService)
         {
             _context = context;
+            _tokenService = tokenService;
         }
 
         // GET: api/Accounts
@@ -31,11 +34,9 @@ namespace Passwordium_api.Controllers
         public async Task<ActionResult<List<Account>>> GetAccounts()
         {
             string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-            var handler = new JwtSecurityTokenHandler();
-            var token = handler.ReadJwtToken(jwt);
-            var userId = token.Claims.First(claim => claim.Type == "id").Value;
+            int userId = _tokenService.GetUserIdFromJWT(jwt);
 
-            var accounts = await _context.Accounts.Where(a => a.UserId == int.Parse(userId)).ToListAsync();
+            var accounts = await _context.Accounts.Where(a => a.UserId == userId).ToListAsync();
 
             if (accounts == null)
             {
@@ -50,16 +51,14 @@ namespace Passwordium_api.Controllers
         public async Task<IActionResult> PutAccount(AccountRequest account)
         {
             string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-            var handler = new JwtSecurityTokenHandler();
-            var token = handler.ReadJwtToken(jwt);
-            var userId = token.Claims.First(claim => claim.Type == "id").Value;
+            int userId = _tokenService.GetUserIdFromJWT(jwt);
 
             var accountReal = await _context.Accounts.FirstOrDefaultAsync(a => a.Id == account.Id);
             if (accountReal == null)
             {
                 return NotFound(new { message = "Account does not exists." });
             }
-            if (int.Parse(userId) != account.UserId || accountReal.UserId != int.Parse(userId))
+            if (userId != account.UserId || accountReal.UserId != userId)
             {
                 return BadRequest(new { message = "That account is not yours." });
             }
@@ -88,11 +87,9 @@ namespace Passwordium_api.Controllers
         public async Task<ActionResult<Account>> PostAccount(AccountRequest account)
         {
             string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-            var handler = new JwtSecurityTokenHandler();
-            var token = handler.ReadJwtToken(jwt);
-            var userId = token.Claims.First(claim => claim.Type == "id").Value;
+            int userId = _tokenService.GetUserIdFromJWT(jwt);
 
-            if(int.Parse(userId) != account.UserId)
+            if(userId != account.UserId)
             {
                 return BadRequest(new { message = "That account is not yours." });
             }
@@ -117,16 +114,14 @@ namespace Passwordium_api.Controllers
         public async Task<IActionResult> DeleteAccount(int id)
         {
             string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-            var handler = new JwtSecurityTokenHandler();
-            var token = handler.ReadJwtToken(jwt);
-            var userId = token.Claims.First(claim => claim.Type == "id").Value;
+            int userId = _tokenService.GetUserIdFromJWT(jwt);
 
             var account = await _context.Accounts.FindAsync(id);
             if (account == null)
             {
                 return NotFound(new { message = "Account does not exists." });
             }
-            if (int.Parse(userId) != account.UserId)
+            if (userId != account.UserId)
             {
                 return BadRequest(new { message = "That account is not yours." });
             }

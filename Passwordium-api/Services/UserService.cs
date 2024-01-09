@@ -68,11 +68,9 @@ namespace Passwordium_api.Services
 
         public async Task<LoginResponse> TokenRefreshAsync(TokenRefreshRequest request, string jwtToken)
         {
-            var handler = new JwtSecurityTokenHandler();
-            var token = handler.ReadJwtToken(jwtToken);
-            var userId = token.Claims.First(claim => claim.Type == "id").Value;
+            int userId = _tokenService.GetUserIdFromJWT(jwtToken);
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == int.Parse(userId));
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
             if (request.RefreshToken != user.RefreshToken || user.ExpiresAt < DateTime.UtcNow)
             {

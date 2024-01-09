@@ -53,5 +53,14 @@ namespace Passwordium_api.Services
 
             return user;
         }
+
+        public int GetUserIdFromJWT(string jwt)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(jwt);
+            var userId = token.Claims.First(claim => claim.Type == "id").Value;
+
+            return int.Parse(userId);
+        }
     }
 }
