@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Passwordium_api.Model.Entities;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Passwordium_api.Services
 {
@@ -17,6 +19,22 @@ namespace Passwordium_api.Services
         {
             var passwordHasher = new PasswordHasher<User>();
             return passwordHasher.VerifyHashedPassword(user, user.Password, password);
+        }
+
+        public string GetHash(string input)
+        {
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] data = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
+                return BitConverter.ToString(data).Replace("-", string.Empty);
+            }
+        }
+
+        public bool VerifyHash(string input, string hash)
+        {
+            var hashOfInput = GetHash(input);
+            StringComparer comparer = StringComparer.OrdinalIgnoreCase;
+            return comparer.Compare(hashOfInput, hash) == 0;
         }
     }
 }

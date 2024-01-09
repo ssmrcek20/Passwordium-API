@@ -2,7 +2,11 @@
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
+using Elfie.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,17 +28,19 @@ namespace Passwordium_api.Controllers
         private readonly UserService _userService;
         private readonly DatabaseContext _context;
         private readonly TokenService _tokenService;
+        private readonly HashService _hashService;
 
-        public UsersController(UserService userService, DatabaseContext context, TokenService tokenService)
+        public UsersController(UserService userService, DatabaseContext context, TokenService tokenService, HashService hashService)
         {
             _userService = userService;
             _context=context;
             _tokenService = tokenService;
+            _hashService=hashService;
         }
 
         // POST: api/Users/Login
         [HttpPost("Login")]
-        public async Task<ActionResult<User>> Login(UserRequest request)
+        public async Task<ActionResult<LoginResponse>> Login(UserRequest request)
         {
             try
             {
@@ -54,7 +60,7 @@ namespace Passwordium_api.Controllers
 
         // POST: api/Users/Register
         [HttpPost("Register")]
-        public async Task<ActionResult<User>> Register(UserRequest request)
+        public async Task<IActionResult> Register(UserRequest request)
         {
             try
             {
@@ -75,7 +81,7 @@ namespace Passwordium_api.Controllers
         // POST: api/Users/TokenRefresh
         [Authorize(AuthenticationSchemes = "NoExpiryCheck")]
         [HttpPost("TokenRefresh")]
-        public async Task<ActionResult<User>> TokenRefresh(TokenRefreshRequest request)
+        public async Task<ActionResult<LoginResponse>> TokenRefresh(TokenRefreshRequest request)
         {
             try
             {
@@ -119,6 +125,19 @@ namespace Passwordium_api.Controllers
             }
 
             return Ok(new { message = "Public key stored!" });
+        }
+
+        // GET: api/Users/Challenge
+        [HttpGet("Challenge")]
+        public async Task<IActionResult> challenge()
+        {
+            string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(jwt);
+            string userName = token.Claims.First(claim => claim.Type == "unique_name").Value;
+
+            string hash = _hashService.GetHash(userName);
+            return Ok(new { message = hash });
         }
     }
 }
