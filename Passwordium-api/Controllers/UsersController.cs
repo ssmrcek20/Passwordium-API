@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -21,21 +22,18 @@ namespace Passwordium_api.Controllers
     public class UsersController : ControllerBase
     {
         private readonly UserService _userService;
+        private readonly DatabaseContext _context;
 
-        public UsersController(UserService userService)
+        public UsersController(UserService userService, DatabaseContext context)
         {
             _userService = userService;
+            _context=context;
         }
 
         // POST: api/Users/Login
         [HttpPost("Login")]
         public async Task<ActionResult<User>> Login(UserRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             try
             {
                 LoginResponse response = await _userService.LoginAsync(request);
@@ -56,11 +54,6 @@ namespace Passwordium_api.Controllers
         [HttpPost("Register")]
         public async Task<ActionResult<User>> Register(UserRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             try
             {
                 await _userService.RegisterAsync(request);
@@ -82,11 +75,6 @@ namespace Passwordium_api.Controllers
         [HttpPost("TokenRefresh")]
         public async Task<ActionResult<User>> TokenRefresh(TokenRefreshRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             try
             {
                 string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
@@ -99,6 +87,38 @@ namespace Passwordium_api.Controllers
                 return Unauthorized(new { message = ex.Message });
             }
 
+        }
+
+        // POST: api/Users/PublicKey
+        [Authorize]
+        [HttpPost("PublicKey")]
+        public async Task<IActionResult> PublicKey(PublicKeyRequest request)
+        {
+            string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(jwt);
+            var userId = token.Claims.First(claim => claim.Type == "id").Value;
+
+            var userReal = await _context.Users.FirstOrDefaultAsync(a => a.Id == int.Parse(userId));
+            if (userReal == null)
+            {
+                return NotFound(new { message = "User does not exists." });
+            }
+
+            userReal.PublicKey = request.PublicKey;
+
+            _context.Entry(userReal).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return NotFound(new { message = "Did not add public key." });
+            }
+
+            return Ok(new { message = "Public key stored!" });
         }
     }
 }
