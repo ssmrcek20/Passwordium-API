@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 using Passwordium_api.Data;
 using Passwordium_api.Model.Entities;
 using Passwordium_api.Model.Requests;
+using Passwordium_api.Model.Responses;
 using Passwordium_api.Services;
 
 namespace Passwordium_api.Controllers
@@ -130,6 +131,33 @@ namespace Passwordium_api.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Account deleted from database!" });
+        }
+
+        // POST: api/Accounts/CheckPasswords
+        [HttpPost("CheckPasswords")]
+        public async Task<ActionResult<List<CheckPasswordsRequest>>> CheckPasswords(List<CheckPasswordsRequest> request)
+        {
+            string apiURL = "https://api.pwnedpasswords.com/range/";
+            HttpClient client = new HttpClient();
+            List<CheckPasswordsResponse> response = new List<CheckPasswordsResponse>();
+            
+            foreach (CheckPasswordsRequest passRequest in request)
+            {
+                string prefix = passRequest.Password.Substring(0, 5);
+                string suffix = passRequest.Password.Substring(5);
+
+
+                HttpResponseMessage apiResponse = await client.GetAsync(apiURL + prefix);
+                string apiResponseString = await apiResponse.Content.ReadAsStringAsync();
+                bool isPasswordBreached = apiResponseString.Contains(suffix.ToUpper());
+
+                if (isPasswordBreached)
+                {
+                    response.Add(new CheckPasswordsResponse { Id = passRequest.Id });
+                }
+            }
+
+            return Ok(response);
         }
     }
 }
