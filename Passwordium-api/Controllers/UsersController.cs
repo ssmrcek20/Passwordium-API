@@ -1,20 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
-using System.Security.Claims;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
-using Elfie.Serialization;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
-using NuGet.Protocol.Plugins;
 using Passwordium_api.Data;
-using Passwordium_api.Model.Entities;
 using Passwordium_api.Model.Requests;
 using Passwordium_api.Model.Responses;
 using Passwordium_api.Services;
@@ -128,16 +117,83 @@ namespace Passwordium_api.Controllers
         }
 
         // GET: api/Users/Challenge
-        [HttpGet("Challenge")]
-        public async Task<IActionResult> challenge()
+        [HttpGet("Challenge/{publicKey}")]
+        public async Task<IActionResult> challenge(string publicKey)
         {
-            string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-            var handler = new JwtSecurityTokenHandler();
-            var token = handler.ReadJwtToken(jwt);
-            string userName = token.Claims.First(claim => claim.Type == "unique_name").Value;
+            var user = await _context.Users.FirstOrDefaultAsync(a => a.PublicKey == publicKey);
+            if (user == null)
+            {
+                return NotFound(new { message = "User does not exists." });
+            }
 
-            string hash = _hashService.GetHash(userName);
+            user.ChallengeExpiresAt = DateTime.UtcNow.AddMinutes(2);
+            _context.Entry(user).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return NotFound(new { message = "Did not generate challenge." });
+            }
+
+            string hash = _hashService.GetHash(publicKey + user.ChallengeExpiresAt);
             return Ok(new { message = hash });
+        }
+
+        // POST: api/Users/VerifyChallenge
+        [HttpPost("VerifyChallenge")]
+        public async Task<IActionResult> VerifyChallenge(VerifyChallengeRequest request)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(a => a.PublicKey == request.PublicKey);
+            if (user == null)
+            {
+                return NotFound(new { message = "User does not exists." });
+            }
+
+            if(user.ChallengeExpiresAt < DateTime.UtcNow)
+            {
+                return Unauthorized(new { message = "Challenge expired." });
+            }
+
+            try
+            {
+                using (ECDsa ECDsa = ECDsa.Create())
+                {
+                    byte[] publicKeyBytes = Convert.FromBase64String(request.PublicKey);
+                    ECDsa.ImportSubjectPublicKeyInfo(publicKeyBytes, out _);
+
+                    byte[] signatureBytes = Convert.FromBase64String(request.Signature);
+                    string data = _hashService.GetHash(request.PublicKey + user.ChallengeExpiresAt);
+                    byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+
+                    bool signatureIsValid = ECDsa.VerifyData(dataBytes, signatureBytes, HashAlgorithmName.SHA256, DSASignatureFormat.Rfc3279DerSequence);
+
+                    if (signatureIsValid)
+                    {
+                        string jwt = _tokenService.GenerateJwtToken(user);
+                        user = _tokenService.GenerateRefreshToken(user, _context);
+
+                        LoginResponse response = new LoginResponse
+                        {
+                            JWT = jwt,
+                            RefreshToken = user.RefreshToken,
+                            RefreshTokenExpiresAt = (DateTime)user.ExpiresAt
+                        };
+
+                        return Ok(response);
+                    }
+                    else
+                    {
+                        return Unauthorized(new { message = "Signature is not valid." });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
         }
     }
 }
