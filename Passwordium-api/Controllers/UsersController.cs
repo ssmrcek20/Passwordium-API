@@ -116,11 +116,11 @@ namespace Passwordium_api.Controllers
             return Ok(new { message = "Public key stored!" });
         }
 
-        // GET: api/Users/Challenge
-        [HttpGet("Challenge/{publicKey}")]
-        public async Task<IActionResult> challenge(string publicKey)
+        // POST: api/Users/Challenge
+        [HttpPost("Challenge")]
+        public async Task<IActionResult> challenge(PublicKeyRequest response)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(a => a.PublicKey == publicKey);
+            var user = await _context.Users.FirstOrDefaultAsync(a => a.PublicKey == response.PublicKey);
             if (user == null)
             {
                 return NotFound(new { message = "User does not exists." });
@@ -138,7 +138,7 @@ namespace Passwordium_api.Controllers
                 return NotFound(new { message = "Did not generate challenge." });
             }
 
-            string hash = _hashService.GetHash(publicKey + user.ChallengeExpiresAt);
+            string hash = _hashService.GetHash(response.PublicKey + user.ChallengeExpiresAt);
             return Ok(new { message = hash });
         }
 
