@@ -59,7 +59,7 @@ namespace Passwordium_api.Controllers
             {
                 return NotFound(new { message = "Account does not exists." });
             }
-            if (userId != account.UserId || accountReal.UserId != userId)
+            if (accountReal.UserId != userId)
             {
                 return BadRequest(new { message = "That account is not yours." });
             }
@@ -90,19 +90,14 @@ namespace Passwordium_api.Controllers
             string jwt = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
             int userId = _tokenService.GetUserIdFromJWT(jwt);
 
-            if(userId != account.UserId)
-            {
-                return BadRequest(new { message = "That account is not yours." });
-            }
-
             Account newAccount = new Account
             {
                 Name = account.Name,
                 Url = account.Url,
                 Username = account.Username,
                 Password = account.Password,
-                UserId = account.UserId,
-                User = await _context.Users.FirstAsync(u => u.Id == account.UserId)
+                UserId = userId,
+                User = await _context.Users.FirstAsync(u => u.Id == userId)
             };
             _context.Accounts.Add(newAccount);
             await _context.SaveChangesAsync();
